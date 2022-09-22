@@ -8,7 +8,7 @@ import (
 	"database/sql"
 	"reflect"
 
-	"github.com/jnnkrdb/jlog"
+	"github.com/jnnkrdb/corerdb/prtcl"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -23,7 +23,7 @@ type SQLite3 struct {
 // connect to the sqlite database file
 func (sql3 *SQLite3) Connect() {
 
-	jlog.Log.Println("connecting to database-file at", sql3.Destination)
+	prtcl.Log.Println("connecting to database-file at", sql3.Destination)
 
 	sql3.Driver = "sqlite3"
 
@@ -31,9 +31,9 @@ func (sql3 *SQLite3) Connect() {
 
 		if tmpDB, err := sql.Open(sql3.Driver, sql3.Destination); err != nil {
 
-			jlog.Log.Println("connecting to database-file at", sql3.Destination)
+			prtcl.Log.Println("connecting to database-file at", sql3.Destination)
 
-			jlog.PrintObject(sql3, tmpDB, err)
+			prtcl.PrintObject(sql3, tmpDB, err)
 
 		} else {
 
@@ -47,17 +47,17 @@ func (sql3 *SQLite3) Connect() {
 // check connection to dbfile
 func (sql3 *SQLite3) CheckConnection() error {
 
-	jlog.Log.Println("checking connection")
+	prtcl.Log.Println("checking connection")
 
 	if err := sql3.db.Ping(); err != nil {
 
-		jlog.PrintObject(sql3, err)
+		prtcl.PrintObject(sql3, err)
 
 		return err
 
 	} else {
 
-		jlog.Log.Println("connection established:", sql3.Destination)
+		prtcl.Log.Println("connection established:", sql3.Destination)
 
 		return nil
 	}
@@ -72,7 +72,7 @@ func (sql3 SQLite3) DB() *sql.DB {
 // disconnect from the currently connected file
 func (sql3 SQLite3) Disconnect() error {
 
-	jlog.Log.Println("connection closed:", sql3.Destination)
+	prtcl.Log.Println("connection closed:", sql3.Destination)
 
 	return sql3.db.Close()
 }
@@ -107,12 +107,12 @@ func (sql3 SQLite3) SelectObject(tblName string, objPointer, obj interface{}) er
 
 	if err := row.Scan(args...); err != nil {
 
-		jlog.PrintObject(sql3, objPointer, obj, sql, args, row, err)
+		prtcl.PrintObject(sql3, objPointer, obj, sql, args, row, err)
 
 		return err
 	}
 
-	jlog.Log.Println("selected | collected rows: ", 1)
+	prtcl.Log.Println("selected | collected rows: ", 1)
 
 	return nil
 }
@@ -129,7 +129,7 @@ func (sql3 SQLite3) SelectObjects(tblName string, obj interface{}) error {
 
 	if rows, err := sql3.DB().Query(sql); err != nil {
 
-		jlog.PrintObject(sql3, obj, sql, rows, err)
+		prtcl.PrintObject(sql3, obj, sql, rows, err)
 
 		return err
 
@@ -154,7 +154,7 @@ func (sql3 SQLite3) SelectObjects(tblName string, obj interface{}) error {
 
 			if err := rows.Scan(args...); err != nil {
 
-				jlog.PrintObject(sql3, obj, sql, rows, destv, args, rowscount, rowp, rowv, err)
+				prtcl.PrintObject(sql3, obj, sql, rows, destv, args, rowscount, rowp, rowv, err)
 
 				return err
 			}
@@ -164,7 +164,7 @@ func (sql3 SQLite3) SelectObjects(tblName string, obj interface{}) error {
 			rowscount++
 		}
 
-		jlog.Log.Println("selected | collected rows: ", rowscount)
+		prtcl.Log.Println("selected | collected rows: ", rowscount)
 
 		return nil
 	}
@@ -208,7 +208,7 @@ func (sql3 SQLite3) InsertObject(tblName string, objPointer, obj interface{}) er
 
 	if statement, err := sql3.DB().Prepare(sql); err != nil {
 
-		jlog.PrintObject(sql3, objPointer, obj, sql, statement, err)
+		prtcl.PrintObject(sql3, objPointer, obj, sql, statement, err)
 
 		return err
 
@@ -223,7 +223,7 @@ func (sql3 SQLite3) InsertObject(tblName string, objPointer, obj interface{}) er
 
 		if result, err := statement.Exec(args...); err != nil {
 
-			jlog.PrintObject(sql3, objPointer, obj, sql, statement, args, result, err)
+			prtcl.PrintObject(sql3, objPointer, obj, sql, statement, args, result, err)
 
 			return err
 
@@ -231,7 +231,7 @@ func (sql3 SQLite3) InsertObject(tblName string, objPointer, obj interface{}) er
 
 			if id, err := result.LastInsertId(); err != nil {
 
-				jlog.PrintObject(sql3, objPointer, obj, sql, statement, args, result, id, err)
+				prtcl.PrintObject(sql3, objPointer, obj, sql, statement, args, result, id, err)
 
 				return err
 
@@ -239,7 +239,7 @@ func (sql3 SQLite3) InsertObject(tblName string, objPointer, obj interface{}) er
 
 				reflect.ValueOf(objPointer).Elem().FieldByName("ID").SetInt(id)
 
-				jlog.Log.Println("inserted | new id: ", id)
+				prtcl.Log.Println("inserted | new id: ", id)
 
 				return nil
 			}
@@ -273,7 +273,7 @@ func (sql3 SQLite3) UpdateObject(tblName string, objPointer, obj interface{}) er
 
 	if statement, err := sql3.DB().Prepare(sql); err != nil {
 
-		jlog.PrintObject(sql3, objPointer, obj, sql, statement, err)
+		prtcl.PrintObject(sql3, objPointer, obj, sql, statement, err)
 
 		return err
 
@@ -290,7 +290,7 @@ func (sql3 SQLite3) UpdateObject(tblName string, objPointer, obj interface{}) er
 
 		if result, err := statement.Exec(args...); err != nil {
 
-			jlog.PrintObject(sql3, objPointer, obj, sql, statement, args, result, err)
+			prtcl.PrintObject(sql3, objPointer, obj, sql, statement, args, result, err)
 
 			return err
 
@@ -298,13 +298,13 @@ func (sql3 SQLite3) UpdateObject(tblName string, objPointer, obj interface{}) er
 
 			if rowsaffected, err := result.RowsAffected(); err != nil {
 
-				jlog.PrintObject(sql3, objPointer, obj, sql, statement, args, result, rowsaffected, err)
+				prtcl.PrintObject(sql3, objPointer, obj, sql, statement, args, result, rowsaffected, err)
 
 				return err
 
 			} else {
 
-				jlog.Log.Println("updated | updated rows: ", rowsaffected)
+				prtcl.Log.Println("updated | updated rows: ", rowsaffected)
 
 				return nil
 			}
@@ -324,7 +324,7 @@ func (sql3 SQLite3) DeleteObject(tblName string, obj interface{}) error {
 
 	if statement, err := sql3.DB().Prepare(sql); err != nil {
 
-		jlog.PrintObject(sql3, obj, sql, statement, err)
+		prtcl.PrintObject(sql3, obj, sql, statement, err)
 
 		return err
 
@@ -332,7 +332,7 @@ func (sql3 SQLite3) DeleteObject(tblName string, obj interface{}) error {
 
 		if result, err := statement.Exec(reflect.ValueOf(obj).Elem().FieldByName("ID").Interface()); err != nil {
 
-			jlog.PrintObject(sql3, obj, sql, statement, result, err)
+			prtcl.PrintObject(sql3, obj, sql, statement, result, err)
 
 			return err
 
@@ -340,13 +340,13 @@ func (sql3 SQLite3) DeleteObject(tblName string, obj interface{}) error {
 
 			if rowsaffected, err := result.RowsAffected(); err != nil {
 
-				jlog.PrintObject(sql3, obj, sql, statement, result, rowsaffected, err)
+				prtcl.PrintObject(sql3, obj, sql, statement, result, rowsaffected, err)
 
 				return err
 
 			} else {
 
-				jlog.Log.Println("deleted | updated rows: ", rowsaffected)
+				prtcl.Log.Println("deleted | updated rows: ", rowsaffected)
 
 				return nil
 			}

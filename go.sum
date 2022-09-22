@@ -1,4 +1,4 @@
-github.com/jnnkrdb/jlog v1.0.1 h1:LMh8XjHRw+6vv2HUCzLlpMhYW/vZW/cGs/51UY53mno=
-github.com/jnnkrdb/jlog v1.0.1/go.mod h1:pOV09DUQogn1NmIjtWD22m7hsQy3t3J4dkWoNTkyzD4=
+github.com/jnnkrdb/corerdb v1.2.1 h1:byfFghIdBIYWkEiO2hD1tj8m8s747t0qq1O/vjUhRGU=
+github.com/jnnkrdb/corerdb v1.2.1/go.mod h1:0YOsgjFObmWNeiETKpjfnLYqonprtV5OxyWmv/dw3oE=
 github.com/mattn/go-sqlite3 v1.14.15 h1:vfoHhTN1af61xCRSWzFIWzx2YskyMTwHLrExkBOjvxI=
 github.com/mattn/go-sqlite3 v1.14.15/go.mod h1:2eHXhiwb8IkHr+BDWZGa96P6+rkvnG63S2DGjv9HUNg=
