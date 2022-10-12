@@ -353,3 +353,45 @@ func (sql3 SQLite3) DeleteObject(tblName string, obj interface{}) error {
 		}
 	}
 }
+
+// this function generates an "delete" statement, where the given id is used to delete the object
+// from the given table. The function requires the tablename and the id ob the object.
+//
+// Parameters:
+//   - `tblName` : string > the name of the table, where tho object is estimated
+//   - `id` : string > id of the object
+func (sql3 SQLite3) DeleteByID(tblName string, id string) error {
+
+	sql := "DELETE FROM " + tblName + " WHERE id=?;"
+
+	if statement, err := sql3.DB().Prepare(sql); err != nil {
+
+		prtcl.PrintObject(sql3, id, sql, statement, err)
+
+		return err
+
+	} else {
+
+		if result, err := statement.Exec(id); err != nil {
+
+			prtcl.PrintObject(sql3, id, sql, statement, result, err)
+
+			return err
+
+		} else {
+
+			if rowsaffected, err := result.RowsAffected(); err != nil {
+
+				prtcl.PrintObject(sql3, id, sql, statement, result, rowsaffected, err)
+
+				return err
+
+			} else {
+
+				prtcl.Log.Println("deleted | updated rows: ", rowsaffected)
+
+				return nil
+			}
+		}
+	}
+}
