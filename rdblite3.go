@@ -44,20 +44,16 @@ func (sql3 *SQLite3) Connect() {
 // check connection to dbfile
 func (sql3 *SQLite3) CheckConnection() error {
 
-	prtcl.Log.Println("checking connection")
+	prtcl.Log.Println("checking connection to:", sql3.Destination)
 
-	if err := sql3.db.Ping(); err != nil {
+	err := sql3.db.Ping()
+
+	if err != nil {
 
 		prtcl.PrintObject(sql3, err)
-
-		return err
-
-	} else {
-
-		prtcl.Log.Println("connection established:", sql3.Destination)
-
-		return nil
 	}
+
+	return err
 }
 
 // get the db pointer from the sqlite3 pkg
@@ -178,15 +174,15 @@ func (sql3 SQLite3) SelectObjects(tblName string, objPointer interface{}) error 
 // Parameters:
 //   - `sqlStatement` : string > the sql stateent, which is used to receive the objects
 //   - `objPointer` : interface{} | *[]struct > contains the list of the objects
-func (sql3 SQLite3) SpecificSelectObjects(sqlStatement string, objPointer interface{}) error {
+func (sql3 SQLite3) SpecificSelectObjects(sqlStatement string, objPointer interface{}) (err error) {
 
 	prtcl.Log.Println("SpecificSelectObjects:", sqlStatement)
 
-	if rows, err := sql3.DB().Query(sqlStatement); err != nil {
+	var rows *sql.Rows = nil
+
+	if rows, err = sql3.DB().Query(sqlStatement); err != nil {
 
 		prtcl.PrintObject(sql3, sqlStatement, objPointer, rows, err)
-
-		return err
 
 	} else {
 
@@ -207,11 +203,11 @@ func (sql3 SQLite3) SpecificSelectObjects(sqlStatement string, objPointer interf
 				args[i] = rowv.Field(i).Addr().Interface()
 			}
 
-			if err := rows.Scan(args...); err != nil {
+			if err = rows.Scan(args...); err != nil {
 
 				prtcl.PrintObject(sql3, sqlStatement, objPointer, rows, destv, args, rowp, rowv, err)
 
-				return err
+				return
 			}
 
 			destv.Set(reflect.Append(destv, rowv))
@@ -220,9 +216,9 @@ func (sql3 SQLite3) SpecificSelectObjects(sqlStatement string, objPointer interf
 		}
 
 		prtcl.Log.Println("specific selected | collected rows:", rowscount)
-
-		return nil
 	}
+
+	return
 }
 
 // this function uses a specified sql-statement to select multiple objects. the statement will be given through the
@@ -231,7 +227,7 @@ func (sql3 SQLite3) SpecificSelectObjects(sqlStatement string, objPointer interf
 // Parameters:
 //   - `sqlStatement` : string > the sql stateent, which is used to receive the objects
 //   - `objPointer` : interface{} | *struct > contains the pointer to the object -> *[]struct
-func (sql3 SQLite3) SpecificSelectObject(sqlStatement string, objPointer interface{}) error {
+func (sql3 SQLite3) SpecificSelectObject(sqlStatement string, objPointer interface{}) (err error) {
 
 	prtcl.Log.Println("SpecificSelectObject:", sqlStatement)
 
@@ -244,16 +240,14 @@ func (sql3 SQLite3) SpecificSelectObject(sqlStatement string, objPointer interfa
 		args[i] = reflect.ValueOf(objPointer).Elem().Field(i).Addr().Interface()
 	}
 
-	if err := row.Scan(args...); err != nil {
+	if err = row.Scan(args...); err != nil {
 
 		prtcl.PrintObject(sql3, objPointer, sqlStatement, objPointer, args, row, err)
-
-		return err
 	}
 
 	prtcl.Log.Println("specific selected | collected rows:", 1)
 
-	return nil
+	return
 }
 
 // this function generates an "insert" statement, where the given struct
@@ -264,42 +258,42 @@ func (sql3 SQLite3) SpecificSelectObject(sqlStatement string, objPointer interfa
 //   - `tblName` : string > the name of the table, where tho object is estimated
 //   - `objPointer` : interface{} | *struct > pointer to the object, is used to get the struct-informations
 //   - // `obj` : interface{} | struct > the same object, but not as a pointer, is used to get the struct-informations
-func (sql3 SQLite3) InsertObject(tblName string, objPointer interface{}) error {
+func (sql3 SQLite3) InsertObject(tblName string, objPointer interface{}) (err error) {
 
-	sql := "INSERT INTO " + tblName + " ( "
+	sqlStatement := "INSERT INTO " + tblName + " ( "
 
 	// this one is new, test
 	obj := reflect.ValueOf(objPointer).Elem()
 
 	for i := 1; i < reflect.ValueOf(objPointer).Elem().NumField(); i++ {
 
-		sql += reflect.TypeOf(obj).Field(i).Tag.Get("column")
+		sqlStatement += reflect.TypeOf(obj).Field(i).Tag.Get("column")
 
 		if i != reflect.ValueOf(objPointer).Elem().NumField()-1 {
 
-			sql += ", "
+			sqlStatement += ", "
 		}
 	}
 
-	sql += " ) VALUES ( "
+	sqlStatement += " ) VALUES ( "
 
 	for i := 1; i < reflect.ValueOf(objPointer).Elem().NumField(); i++ {
 
-		sql += "?"
+		sqlStatement += "?"
 
 		if i != reflect.ValueOf(objPointer).Elem().NumField()-1 {
 
-			sql += ", "
+			sqlStatement += ", "
 		}
 	}
 
-	sql += " );"
+	sqlStatement += " );"
 
-	if statement, err := sql3.DB().Prepare(sql); err != nil {
+	var statement *sql.Stmt = nil
 
-		prtcl.PrintObject(sql3, objPointer, obj, sql, statement, err)
+	if statement, err = sql3.DB().Prepare(sqlStatement); err != nil {
 
-		return err
+		prtcl.PrintObject(sql3, objPointer, obj, sqlStatement, statement, err)
 
 	} else {
 
@@ -310,30 +304,30 @@ func (sql3 SQLite3) InsertObject(tblName string, objPointer interface{}) error {
 			args[i] = reflect.ValueOf(objPointer).Elem().Field(i + 1).Interface()
 		}
 
-		if result, err := statement.Exec(args...); err != nil {
+		var result sql.Result = nil
 
-			prtcl.PrintObject(sql3, objPointer, obj, sql, statement, args, result, err)
+		if result, err = statement.Exec(args...); err != nil {
 
-			return err
+			prtcl.PrintObject(sql3, objPointer, obj, sqlStatement, statement, args, result, err)
 
 		} else {
 
-			if id, err := result.LastInsertId(); err != nil {
+			var id int64 = 0
 
-				prtcl.PrintObject(sql3, objPointer, obj, sql, statement, args, result, id, err)
+			if id, err = result.LastInsertId(); err != nil {
 
-				return err
+				prtcl.PrintObject(sql3, objPointer, obj, sqlStatement, statement, args, result, id, err)
 
 			} else {
 
 				reflect.ValueOf(objPointer).Elem().FieldByName("ID").SetInt(id)
 
 				prtcl.Log.Println("inserted | new id: ", id)
-
-				return nil
 			}
 		}
 	}
+
+	return
 }
 
 // this function generates an "update" statement, where the given struct updates the values
@@ -344,30 +338,30 @@ func (sql3 SQLite3) InsertObject(tblName string, objPointer interface{}) error {
 //   - `tblName` : string > the name of the table, where tho object is estimated
 //   - `objPointer` : interface{} | *struct > pointer to the object, is used to store the values
 //   - // `obj` : interface{} | struct > the same object, but not as a pointer, is used to get the struct-informations
-func (sql3 SQLite3) UpdateObject(tblName string, objPointer interface{}) error {
+func (sql3 SQLite3) UpdateObject(tblName string, objPointer interface{}) (err error) {
 
-	sql := "UPDATE " + tblName + " SET "
+	sqlStatement := "UPDATE " + tblName + " SET "
 
 	// this one is new, test
 	obj := reflect.ValueOf(objPointer).Elem()
 
 	for i := 1; i < reflect.ValueOf(objPointer).Elem().NumField(); i++ {
 
-		sql += reflect.TypeOf(obj).Field(i).Tag.Get("column") + "=?"
+		sqlStatement += reflect.TypeOf(obj).Field(i).Tag.Get("column") + "=?"
 
 		if i != reflect.ValueOf(objPointer).Elem().NumField()-1 {
 
-			sql += ", "
+			sqlStatement += ", "
 		}
 	}
 
-	sql += " WHERE id=?;"
+	sqlStatement += " WHERE id=?;"
 
-	if statement, err := sql3.DB().Prepare(sql); err != nil {
+	var statement *sql.Stmt = nil
 
-		prtcl.PrintObject(sql3, objPointer, obj, sql, statement, err)
+	if statement, err = sql3.DB().Prepare(sqlStatement); err != nil {
 
-		return err
+		prtcl.PrintObject(sql3, objPointer, obj, sqlStatement, statement, err)
 
 	} else {
 
@@ -380,28 +374,28 @@ func (sql3 SQLite3) UpdateObject(tblName string, objPointer interface{}) error {
 
 		args[len(args)-1] = reflect.ValueOf(objPointer).Elem().Field(0).Interface()
 
-		if result, err := statement.Exec(args...); err != nil {
+		var result sql.Result = nil
 
-			prtcl.PrintObject(sql3, objPointer, obj, sql, statement, args, result, err)
+		if result, err = statement.Exec(args...); err != nil {
 
-			return err
+			prtcl.PrintObject(sql3, objPointer, obj, sqlStatement, statement, args, result, err)
 
 		} else {
 
-			if rowsaffected, err := result.RowsAffected(); err != nil {
+			var rowsaffected int64 = 0
 
-				prtcl.PrintObject(sql3, objPointer, obj, sql, statement, args, result, rowsaffected, err)
+			if rowsaffected, err = result.RowsAffected(); err != nil {
 
-				return err
+				prtcl.PrintObject(sql3, objPointer, obj, sqlStatement, statement, args, result, rowsaffected, err)
 
 			} else {
 
 				prtcl.Log.Println("updated | updated rows: ", rowsaffected)
-
-				return nil
 			}
 		}
 	}
+
+	return
 }
 
 // this function generates an "delete" statement, where the given struct is used to delete the object
@@ -410,40 +404,40 @@ func (sql3 SQLite3) UpdateObject(tblName string, objPointer interface{}) error {
 // Parameters:
 //   - `tblName` : string > the name of the table, where tho object is estimated
 //   - `obj` : interface{} | struct > the object with an ID-field and an valid value
-func (sql3 SQLite3) DeleteObject(tblName string, obj interface{}) error {
+func (sql3 SQLite3) DeleteObject(tblName string, obj interface{}) (err error) {
 
-	sql := "DELETE FROM " + tblName + " WHERE id=?;"
+	sqlStatement := "DELETE FROM " + tblName + " WHERE id=?;"
 
-	if statement, err := sql3.DB().Prepare(sql); err != nil {
+	var statement *sql.Stmt = nil
 
-		prtcl.PrintObject(sql3, obj, sql, statement, err)
+	if statement, err = sql3.DB().Prepare(sqlStatement); err != nil {
 
-		return err
+		prtcl.PrintObject(sql3, obj, sqlStatement, statement, err)
 
 	} else {
 
-		if result, err := statement.Exec(reflect.ValueOf(obj).Elem().FieldByName("ID").Interface()); err != nil {
+		var result sql.Result = nil
 
-			prtcl.PrintObject(sql3, obj, sql, statement, result, err)
+		if result, err = statement.Exec(reflect.ValueOf(obj).Elem().FieldByName("ID").Interface()); err != nil {
 
-			return err
+			prtcl.PrintObject(sql3, obj, sqlStatement, statement, result, err)
 
 		} else {
 
-			if rowsaffected, err := result.RowsAffected(); err != nil {
+			var rowsaffected int64 = 0
 
-				prtcl.PrintObject(sql3, obj, sql, statement, result, rowsaffected, err)
+			if rowsaffected, err = result.RowsAffected(); err != nil {
 
-				return err
+				prtcl.PrintObject(sql3, obj, sqlStatement, statement, result, rowsaffected, err)
 
 			} else {
 
 				prtcl.Log.Println("deleted | updated rows: ", rowsaffected)
-
-				return nil
 			}
 		}
 	}
+
+	return
 }
 
 // this function generates an "delete" statement, where the given id is used to delete the object
@@ -452,38 +446,38 @@ func (sql3 SQLite3) DeleteObject(tblName string, obj interface{}) error {
 // Parameters:
 //   - `tblName` : string > the name of the table, where tho object is estimated
 //   - `id` : string > id of the object
-func (sql3 SQLite3) DeleteByID(tblName string, id string) error {
+func (sql3 SQLite3) DeleteByID(tblName string, id string) (err error) {
 
-	sql := "DELETE FROM " + tblName + " WHERE id=?;"
+	sqlStatement := "DELETE FROM " + tblName + " WHERE id=?;"
 
-	if statement, err := sql3.DB().Prepare(sql); err != nil {
+	var statement *sql.Stmt = nil
 
-		prtcl.PrintObject(sql3, id, sql, statement, err)
+	if statement, err = sql3.DB().Prepare(sqlStatement); err != nil {
 
-		return err
+		prtcl.PrintObject(sql3, id, sqlStatement, statement, err)
 
 	} else {
 
-		if result, err := statement.Exec(id); err != nil {
+		var result sql.Result = nil
 
-			prtcl.PrintObject(sql3, id, sql, statement, result, err)
+		if result, err = statement.Exec(id); err != nil {
 
-			return err
+			prtcl.PrintObject(sql3, id, sqlStatement, statement, result, err)
 
 		} else {
 
-			if rowsaffected, err := result.RowsAffected(); err != nil {
+			var rowsaffected int64 = 0
 
-				prtcl.PrintObject(sql3, id, sql, statement, result, rowsaffected, err)
+			if rowsaffected, err = result.RowsAffected(); err != nil {
 
-				return err
+				prtcl.PrintObject(sql3, id, sqlStatement, statement, result, rowsaffected, err)
 
 			} else {
 
 				prtcl.Log.Println("deleted | updated rows: ", rowsaffected)
-
-				return nil
 			}
 		}
 	}
+
+	return
 }
