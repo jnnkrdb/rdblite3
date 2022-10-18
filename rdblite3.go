@@ -83,10 +83,13 @@ func (sql3 SQLite3) Disconnect() error {
 // Parameters:
 //   - `tblName` : string > the name of the table, where tho object is estimated
 //   - `objPointer` : interface{} | *struct > pointer to the object, is used to get the struct-informations
-//   - `obj` : interface{} | struct > the same object, but not as a pointer, where the data should be stored
-func (sql3 SQLite3) SelectObject(tblName string, objPointer, obj interface{}) error {
+//   - // `obj` : interface{} | struct > the same object, but not as a pointer, where the data should be stored
+func (sql3 SQLite3) SelectObject(tblName string, objPointer interface{}) error {
 
 	sql := "SELECT "
+
+	// this one is new, test
+	obj := reflect.ValueOf(objPointer).Elem()
 
 	for i := 0; i < reflect.ValueOf(objPointer).Elem().NumField()-1; i++ {
 
@@ -260,10 +263,13 @@ func (sql3 SQLite3) SpecificSelectObject(sqlStatement string, objPointer interfa
 // Parameters:
 //   - `tblName` : string > the name of the table, where tho object is estimated
 //   - `objPointer` : interface{} | *struct > pointer to the object, is used to get the struct-informations
-//   - `obj` : interface{} | struct > the same object, but not as a pointer, is used to get the struct-informations
-func (sql3 SQLite3) InsertObject(tblName string, objPointer, obj interface{}) error {
+//   - // `obj` : interface{} | struct > the same object, but not as a pointer, is used to get the struct-informations
+func (sql3 SQLite3) InsertObject(tblName string, objPointer interface{}) error {
 
 	sql := "INSERT INTO " + tblName + " ( "
+
+	// this one is new, test
+	obj := reflect.ValueOf(objPointer).Elem()
 
 	for i := 1; i < reflect.ValueOf(objPointer).Elem().NumField(); i++ {
 
@@ -337,10 +343,13 @@ func (sql3 SQLite3) InsertObject(tblName string, objPointer, obj interface{}) er
 // Parameters:
 //   - `tblName` : string > the name of the table, where tho object is estimated
 //   - `objPointer` : interface{} | *struct > pointer to the object, is used to store the values
-//   - `obj` : interface{} | struct > the same object, but not as a pointer, is used to get the struct-informations
-func (sql3 SQLite3) UpdateObject(tblName string, objPointer, obj interface{}) error {
+//   - // `obj` : interface{} | struct > the same object, but not as a pointer, is used to get the struct-informations
+func (sql3 SQLite3) UpdateObject(tblName string, objPointer interface{}) error {
 
 	sql := "UPDATE " + tblName + " SET "
+
+	// this one is new, test
+	obj := reflect.ValueOf(objPointer).Elem()
 
 	for i := 1; i < reflect.ValueOf(objPointer).Elem().NumField(); i++ {
 
