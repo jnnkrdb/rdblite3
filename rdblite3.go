@@ -80,39 +80,39 @@ func (sql3 SQLite3) Disconnect() error {
 //   - `tblName` : string > the name of the table, where tho object is estimated
 //   - `objPointer` : interface{} | *struct > pointer to the object, is used to get the struct-informations
 //   - // `obj` : interface{} | struct > the same object, but not as a pointer, where the data should be stored
-func (sql3 SQLite3) SelectObject(tblName string, objPointer interface{}) error {
+func (sql3 SQLite3) SelectObject(tblName string, objPointer interface{}) (err error) {
 
-	sql := "SELECT "
+	sqlStatement := "SELECT "
 
 	// this one is new, test
 	obj := reflect.ValueOf(objPointer).Elem()
 
 	for i := 0; i < reflect.ValueOf(objPointer).Elem().NumField()-1; i++ {
 
-		sql += reflect.TypeOf(obj).Field(i).Tag.Get("column") + ", "
+		sqlStatement += reflect.TypeOf(obj).Field(i).Tag.Get("column") + ", "
 	}
 
-	sql += reflect.TypeOf(obj).Field(reflect.ValueOf(objPointer).Elem().NumField()-1).Tag.Get("column") + " FROM " + tblName + " WHERE id=?;"
+	sqlStatement += reflect.TypeOf(obj).Field(reflect.ValueOf(objPointer).Elem().NumField()-1).Tag.Get("column") + " FROM " + tblName + " WHERE id=?;"
 
 	args := make([]interface{}, reflect.ValueOf(objPointer).Elem().NumField())
 
-	row := sql3.DB().QueryRow(sql, reflect.ValueOf(objPointer).Elem().FieldByName("ID").Int())
+	row := sql3.DB().QueryRow(sqlStatement, reflect.ValueOf(objPointer).Elem().FieldByName("ID").Int())
 
 	for i := 0; i < len(args); i++ {
 
 		args[i] = reflect.ValueOf(objPointer).Elem().Field(i).Addr().Interface()
 	}
 
-	if err := row.Scan(args...); err != nil {
+	if err = row.Scan(args...); err != nil {
 
-		prtcl.PrintObject(sql3, objPointer, obj, sql, args, row, err)
+		prtcl.PrintObject(sql3, objPointer, obj, sqlStatement, args, row, err)
 
-		return err
+		return
 	}
 
 	prtcl.Log.Println("selected | collected rows: ", 1)
 
-	return nil
+	return
 }
 
 // this function generates a "select" statement, where the estimated object
@@ -121,15 +121,15 @@ func (sql3 SQLite3) SelectObject(tblName string, objPointer interface{}) error {
 // Parameters:
 //   - `tblName` : string > the name of the table, where tho object is estimated
 //   - `objPointer` : interface{} | *[]struct > contains the list of the array
-func (sql3 SQLite3) SelectObjects(tblName string, objPointer interface{}) error {
+func (sql3 SQLite3) SelectObjects(tblName string, objPointer interface{}) (err error) {
 
-	sql := "SELECT * FROM " + tblName + ";"
+	sqlStatement := "SELECT * FROM " + tblName + ";"
 
-	if rows, err := sql3.DB().Query(sql); err != nil {
+	var rows *sql.Rows = nil
 
-		prtcl.PrintObject(sql3, objPointer, sql, rows, err)
+	if rows, err = sql3.DB().Query(sqlStatement); err != nil {
 
-		return err
+		prtcl.PrintObject(sql3, objPointer, sqlStatement, rows, err)
 
 	} else {
 
@@ -150,11 +150,11 @@ func (sql3 SQLite3) SelectObjects(tblName string, objPointer interface{}) error 
 				args[i] = rowv.Field(i).Addr().Interface()
 			}
 
-			if err := rows.Scan(args...); err != nil {
+			if err = rows.Scan(args...); err != nil {
 
-				prtcl.PrintObject(sql3, objPointer, sql, rows, destv, args, rowscount, rowp, rowv, err)
+				prtcl.PrintObject(sql3, objPointer, sqlStatement, rows, destv, args, rowscount, rowp, rowv, err)
 
-				return err
+				return
 			}
 
 			destv.Set(reflect.Append(destv, rowv))
@@ -163,9 +163,9 @@ func (sql3 SQLite3) SelectObjects(tblName string, objPointer interface{}) error 
 		}
 
 		prtcl.Log.Println("selected | collected rows:", rowscount)
-
-		return nil
 	}
+
+	return
 }
 
 // this function uses a specified sql-statement to select multiple objects. the statement will be given through the
