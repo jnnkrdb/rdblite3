@@ -17,7 +17,6 @@ import (
 type SQLite3 struct {
 	db          *sql.DB
 	Destination string `json:"destination"`
-	Driver      string
 }
 
 // connect to the sqlite database file
@@ -25,11 +24,9 @@ func (sql3 *SQLite3) Connect() {
 
 	prtcl.Log.Println("connecting to database-file at", sql3.Destination)
 
-	sql3.Driver = "sqlite3"
-
 	if sql3.Destination != "" {
 
-		if tmpDB, err := sql.Open(sql3.Driver, sql3.Destination); err != nil {
+		if tmpDB, err := sql.Open("sqlite3", sql3.Destination); err != nil {
 
 			prtcl.Log.Println("connecting to database-file at", sql3.Destination)
 
@@ -77,6 +74,8 @@ func (sql3 SQLite3) Disconnect() error {
 	return sql3.db.Close()
 }
 
+// ----------------------------------------------------------------------------------------------------- SQL STATEMENTS
+
 // this function generates a "select" statement, where the estimated object
 // is exactly one object, not from a list. The function requires the object-
 // struct to have an "ID" field.
@@ -122,20 +121,20 @@ func (sql3 SQLite3) SelectObject(tblName string, objPointer, obj interface{}) er
 //
 // Parameters:
 //   - `tblName` : string > the name of the table, where tho object is estimated
-//   - `obj` : interface{} | struct > the same object, but not as a pointer, is used to get the struct-informations
-func (sql3 SQLite3) SelectObjects(tblName string, obj interface{}) error {
+//   - `objPointer` : interface{} | *[]struct > contains the list of the array
+func (sql3 SQLite3) SelectObjects(tblName string, objPointer interface{}) error {
 
 	sql := "SELECT * FROM " + tblName + ";"
 
 	if rows, err := sql3.DB().Query(sql); err != nil {
 
-		prtcl.PrintObject(sql3, obj, sql, rows, err)
+		prtcl.PrintObject(sql3, objPointer, sql, rows, err)
 
 		return err
 
 	} else {
 
-		destv := reflect.ValueOf(obj).Elem()
+		destv := reflect.ValueOf(objPointer).Elem()
 
 		args := make([]interface{}, destv.Type().Elem().NumField())
 
@@ -154,7 +153,7 @@ func (sql3 SQLite3) SelectObjects(tblName string, obj interface{}) error {
 
 			if err := rows.Scan(args...); err != nil {
 
-				prtcl.PrintObject(sql3, obj, sql, rows, destv, args, rowscount, rowp, rowv, err)
+				prtcl.PrintObject(sql3, objPointer, sql, rows, destv, args, rowscount, rowp, rowv, err)
 
 				return err
 			}
@@ -164,10 +163,94 @@ func (sql3 SQLite3) SelectObjects(tblName string, obj interface{}) error {
 			rowscount++
 		}
 
-		prtcl.Log.Println("selected | collected rows: ", rowscount)
+		prtcl.Log.Println("selected | collected rows:", rowscount)
 
 		return nil
 	}
+}
+
+// this function uses a specified sql-statement to select multiple objects. the statement will be given through the
+// variable sqlStatement <string>
+//
+// Parameters:
+//   - `sqlStatement` : string > the sql stateent, which is used to receive the objects
+//   - `objPointer` : interface{} | *[]struct > contains the list of the objects
+func (sql3 SQLite3) SpecificSelectObjects(sqlStatement string, objPointer interface{}) error {
+
+	prtcl.Log.Println("SpecificSelectObjects:", sqlStatement)
+
+	if rows, err := sql3.DB().Query(sqlStatement); err != nil {
+
+		prtcl.PrintObject(sql3, sqlStatement, objPointer, rows, err)
+
+		return err
+
+	} else {
+
+		destv := reflect.ValueOf(objPointer).Elem()
+
+		args := make([]interface{}, destv.Type().Elem().NumField())
+
+		var rowscount int = 0
+
+		for rows.Next() {
+
+			rowp := reflect.New(destv.Type().Elem())
+
+			rowv := rowp.Elem()
+
+			for i := 0; i < rowv.NumField(); i++ {
+
+				args[i] = rowv.Field(i).Addr().Interface()
+			}
+
+			if err := rows.Scan(args...); err != nil {
+
+				prtcl.PrintObject(sql3, sqlStatement, objPointer, rows, destv, args, rowp, rowv, err)
+
+				return err
+			}
+
+			destv.Set(reflect.Append(destv, rowv))
+
+			rowscount++
+		}
+
+		prtcl.Log.Println("specific selected | collected rows:", rowscount)
+
+		return nil
+	}
+}
+
+// this function uses a specified sql-statement to select multiple objects. the statement will be given through the
+// variable sqlStatement <string>
+//
+// Parameters:
+//   - `sqlStatement` : string > the sql stateent, which is used to receive the objects
+//   - `objPointer` : interface{} | *struct > contains the pointer to the object -> *[]struct
+func (sql3 SQLite3) SpecificSelectObject(sqlStatement string, objPointer interface{}) error {
+
+	prtcl.Log.Println("SpecificSelectObject:", sqlStatement)
+
+	args := make([]interface{}, reflect.ValueOf(objPointer).Elem().NumField())
+
+	row := sql3.DB().QueryRow(sqlStatement)
+
+	for i := 0; i < len(args); i++ {
+
+		args[i] = reflect.ValueOf(objPointer).Elem().Field(i).Addr().Interface()
+	}
+
+	if err := row.Scan(args...); err != nil {
+
+		prtcl.PrintObject(sql3, objPointer, sqlStatement, objPointer, args, row, err)
+
+		return err
+	}
+
+	prtcl.Log.Println("specific selected | collected rows:", 1)
+
+	return nil
 }
 
 // this function generates an "insert" statement, where the given struct
